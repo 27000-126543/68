@@ -22,6 +22,8 @@
     "noFallthroughCasesInSwitch": false,
     "noUncheckedSideEffectImports": false,
     "forceConsistentCasingInFileNames": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "baseUrl": "./",
     "paths": {
       "@/*": [
@@ -30,7 +32,6 @@
     }
   },
   "include": [
-    "src",
-    "api"
+    "src"
   ]
 }

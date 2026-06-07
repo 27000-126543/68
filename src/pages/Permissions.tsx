@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Shield, Plus, Search, Edit3, Ban, UserCheck, Building2,
   Users, Factory
@@ -27,9 +27,13 @@ const ROLE_ICON: Record<UserRole, React.ReactNode> = {
 };
 
 export default function Permissions() {
-  const { permissionUsers } = useDataStore();
+  const { permissionUsers, refreshPermissionUsers } = useDataStore();
   const [keyword, setKeyword] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+
+  useEffect(() => {
+    void refreshPermissionUsers();
+  }, [refreshPermissionUsers]);
 
   const filtered = useMemo(() => {
     let list = permissionUsers;

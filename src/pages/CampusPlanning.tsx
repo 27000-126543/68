@@ -5,13 +5,13 @@ import {
 } from 'lucide-react';
 import type { TargetPosition, GapForecast, UniversityRecommendation } from '../types';
 import {
-  forecastTalentGap, getPositionGapSummary, getSeverity
+  getPositionGapSummary, getSeverity
 } from '../utils/forecast';
 import {
   parseCampusPlanExcel, generateSampleExcel, downloadFile
 } from '../utils/excelParser';
-import { generateUniversityRecommendations } from '../data/mockData';
 import { ForecastArea } from '../components/charts/ForecastArea';
+import { forecastCampusGap, recommendUniversities } from '../utils/api';
 
 export default function CampusPlanning() {
   const [positions, setPositions] = useState<TargetPosition[]>([]);
@@ -27,9 +27,20 @@ export default function CampusPlanning() {
 
   useEffect(() => {
     if (positions.length > 0) {
-      setForecasts(forecastTalentGap(positions, 3));
-      const cities = Array.from(new Set(positions.map(p => p.city)));
-      setUniversities(generateUniversityRecommendations(cities));
+      const run = async () => {
+        try {
+          const [forecastData, uniData] = await Promise.all([
+            forecastCampusGap(positions),
+            recommendUniversities(Array.from(new Set(positions.map(p => p.city))))
+          ]);
+          setForecasts(forecastData);
+          setUniversities(uniData);
+        } catch {
+          setForecasts([]);
+          setUniversities([]);
+        }
+      };
+      void run();
     } else {
       setForecasts([]);
       setUniversities([]);

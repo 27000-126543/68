@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { AlertTriangle, AlertCircle, Clock, CheckCircle2, XCircle,
   Filter, Search, ArrowUpRight, ChevronRight, UserCheck } from 'lucide-react';
 import { useAlertStore } from '../store/useAlertStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { canApprove } from '../utils/alertEngine';
-import type { Alert, AlertStatus, AlertLevel } from '../types';
+import type { Alert, AlertStatus } from '../types';
 
 const STATUS_LABEL: Record<AlertStatus, string> = {
   pending: '待处理', processing: '处理中', approved: '已批准', resolved: '已解决'
@@ -12,22 +12,32 @@ const STATUS_LABEL: Record<AlertStatus, string> = {
 
 export default function Alerts() {
   const { alerts, getFilteredAlerts, setStatusFilter, setLevelFilter, statusFilter, levelFilter,
-    setSelectedAlert, selectedAlertId, approveStep } = useAlertStore();
+    setSelectedAlert, selectedAlertId, approveStep, fetchAlerts, fetchAlertCount, getAlertCount } = useAlertStore();
   const { user } = useAuthStore();
   const [keyword, setKeyword] = useState('');
   const [approveComment, setApproveComment] = useState('');
 
+  useEffect(() => {
+    void fetchAlerts();
+    void fetchAlertCount();
+  }, [fetchAlerts, fetchAlertCount]);
+
+  useEffect(() => {
+    void fetchAlerts();
+  }, [statusFilter, levelFilter, fetchAlerts]);
+
+  const apiCounts = useMemo(() => getAlertCount(), [getAlertCount, alerts]);
   const counts = useMemo(() => ({
-    level1: alerts.filter(a => a.level === 1 && a.status !== 'resolved').length,
-    level2: alerts.filter(a => a.level === 2 && a.status !== 'resolved').length,
-    pending: alerts.filter(a => a.status === 'pending' || a.status === 'processing').length
-  }), [alerts]);
+    level1: apiCounts.level1,
+    level2: apiCounts.level2,
+    pending: apiCounts.pending
+  }), [apiCounts]);
 
   const filtered = useMemo(() => {
     const list = getFilteredAlerts();
     if (!keyword.trim()) return list;
     return list.filter(a => a.description.includes(keyword) || a.industry.includes(keyword) || a.region.includes(keyword));
-  }, [getFilteredAlerts, keyword, alerts]);
+  }, [getFilteredAlerts, keyword, alerts, statusFilter, levelFilter]);
 
   const selected = alerts.find(a => a.id === selectedAlertId) || filtered[0];
 

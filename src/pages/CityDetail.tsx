@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, TrendingUp, GraduationCap, Briefcase } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useDataStore } from '../store/useDataStore';
 import { TrendLine } from '../components/charts/TrendLine';
 import { PieDistribution } from '../components/charts/PieDistribution';
@@ -12,12 +12,23 @@ export default function CityDetail() {
   const { cityId } = useParams();
   const city = decodeURIComponent(cityId || '北京');
   const navigate = useNavigate();
-  const { getCityTrend, getEducationDist, getExperienceDist, getKpiSummary, setFilters } = useDataStore();
+  const {
+    getCityTrend, getEducationDist, getExperienceDist, getKpiSummary, setFilters,
+    refreshCityTrend, refreshEducationDist, refreshExperienceDist, refreshKpi
+  } = useDataStore();
 
-  const trendData = useMemo(() => getCityTrend(city), [city]);
-  const eduDist = useMemo(() => getEducationDist(city), [city]);
-  const expDist = useMemo(() => getExperienceDist(city), [city]);
-  const kpi = useMemo(() => { setFilters({ province: null }); return getKpiSummary(); }, [city]);
+  useEffect(() => {
+    setFilters({ province: null });
+    void refreshCityTrend(city);
+    void refreshEducationDist(city);
+    void refreshExperienceDist(city);
+    void refreshKpi();
+  }, [city, refreshCityTrend, refreshEducationDist, refreshExperienceDist, refreshKpi, setFilters]);
+
+  const trendData = useMemo(() => getCityTrend(city), [city, getCityTrend]);
+  const eduDist = useMemo(() => getEducationDist(city), [city, getEducationDist]);
+  const expDist = useMemo(() => getExperienceDist(city), [city, getExperienceDist]);
+  const kpi = useMemo(() => getKpiSummary(), [getKpiSummary]);
 
   const displayIndustries = INDUSTRIES.slice(0, 5);
 

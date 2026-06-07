@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText, Users, Briefcase, CheckCircle2, UserCheck, Map, Trophy,
@@ -15,11 +15,22 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const {
     provinceData, hotJobs, selectedIndustry, selectedProvince,
-    selectedDateRange, setFilters, setDateRange, getKpiSummary
+    selectedDateRange, setFilters, setDateRange, getKpiSummary,
+    refreshKpi, refreshProvinceData, refreshHotJobs
   } = useDataStore();
   const [industryOpen, setIndustryOpen] = useState(false);
   const [provinceOpen, setProvinceOpen] = useState(false);
-  const kpi = useMemo(() => getKpiSummary(), [selectedIndustry, selectedProvince, selectedDateRange]);
+  const kpi = useMemo(() => getKpiSummary(), [selectedIndustry, selectedProvince, selectedDateRange, getKpiSummary]);
+
+  useEffect(() => {
+    void refreshKpi();
+    void refreshProvinceData();
+    void refreshHotJobs();
+  }, [refreshKpi, refreshProvinceData, refreshHotJobs]);
+
+  useEffect(() => {
+    void refreshKpi();
+  }, [selectedIndustry, selectedProvince, selectedDateRange, refreshKpi]);
 
   const handleProvinceClick = (province: string) => {
     const prov = PROVINCES.find(p => p.name === province);

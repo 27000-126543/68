@@ -1,13 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Building2, Globe2, UserCircle2, ArrowRight, ShieldCheck, TrendingUp, Zap } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { getRoleName, getScopeDescription } from '../utils/permissions';
 
 export default function Login() {
-  const { user, isAuthenticated, login, availableUsers } = useAuthStore();
+  const { user, isAuthenticated, login, availableUsers, fetchUsers } = useAuthStore();
   const [selectedId, setSelectedId] = useState<string>(availableUsers[0]?.id ?? '');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    void fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    if (availableUsers.length > 0 && !selectedId) {
+      setSelectedId(availableUsers[0].id);
+    }
+  }, [availableUsers, selectedId]);
 
   if (isAuthenticated && user) {
     return <Navigate to="/dashboard" replace />;

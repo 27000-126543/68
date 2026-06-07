@@ -1,16 +1,42 @@
 import { create } from 'zustand';
 import type { User, UserRole } from '../types';
-import { generateDefaultUsers } from '../data/mockData';
+import { getLoginUsers } from '../utils/api';
 
 const STORAGE_KEY = 'recruit_auth_user';
+
+const DEFAULT_USERS: User[] = [
+  {
+    id: 'hq_user',
+    name: '刘伟（总部）',
+    email: 'hq@test.com',
+    role: 'hq',
+    scope: {}
+  },
+  {
+    id: 'region_user',
+    name: '陈静（华东区）',
+    email: 'region@test.com',
+    role: 'region',
+    scope: { regions: ['华东'] }
+  },
+  {
+    id: 'ent_user',
+    name: '王芳（字节跳动）',
+    email: 'ent@test.com',
+    role: 'enterprise',
+    scope: { enterprises: ['字节跳动'] }
+  }
+];
 
 interface AuthState {
   user: User | null;
   availableUsers: User[];
+  loading: boolean;
   login: (userId: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   isAuthenticated: boolean;
+  fetchUsers: () => Promise<void>;
 }
 
 const loadFromStorage = (): User | null => {
@@ -33,7 +59,8 @@ const saveToStorage = (user: User | null) => {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: loadFromStorage(),
-  availableUsers: generateDefaultUsers(),
+  availableUsers: DEFAULT_USERS,
+  loading: false,
   isAuthenticated: !!loadFromStorage(),
 
   login: (userId) => {
@@ -54,6 +81,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (target) {
       saveToStorage(target);
       set({ user: target, isAuthenticated: true });
+    }
+  },
+
+  fetchUsers: async () => {
+    set({ loading: true });
+    try {
+      const users = await getLoginUsers();
+      if (users && users.length > 0) {
+        set({ availableUsers: users });
+      }
+    } catch {
+      // Fallback to default users already in state
+    } finally {
+      set({ loading: false });
     }
   }
 }));

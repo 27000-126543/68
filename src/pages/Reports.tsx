@@ -1,16 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   FileBarChart2, Plus, Download, ChevronRight, TrendingUp, TrendingDown,
   Users, UserCheck, Target, Briefcase, Clock, Lightbulb, Megaphone,
   UserSearch, Compass
 } from 'lucide-react';
 import { useDataStore } from '../store/useDataStore';
-import type { WeeklyReport } from '../types';
 import { formatNumber, formatPercent, formatTrend } from '../hooks/useCountUp';
 
 export default function Reports() {
-  const { weeklyReports } = useDataStore();
+  const { weeklyReports, refreshReports } = useDataStore();
   const [selectedId, setSelectedId] = useState<string | null>(weeklyReports[0]?.id ?? null);
+
+  useEffect(() => {
+    void refreshReports();
+  }, [refreshReports]);
 
   const selected = useMemo(
     () => weeklyReports.find(r => r.id === selectedId) ?? weeklyReports[0],

@@ -1,10 +1,20 @@
 import { create } from 'zustand';
 import type { Alert, AlertStatus, UserRole } from '../types';
-import { generateAlerts } from '../data/mockData';
 import { canApprove } from '../utils/alertEngine';
+import {
+  getAlerts, getAlertCount, approveAlert as apiApproveAlert,
+  escalateAlert as apiEscalateAlert, resolveAlert as apiResolveAlert,
+  type AlertParams, type AlertCount
+} from '../utils/api';
 
 interface AlertState {
   alerts: Alert[];
+  alertCount: AlertCount | null;
+  loading: {
+    alerts: boolean;
+    count: boolean;
+    action: boolean;
+  };
   selectedAlertId: string | null;
   statusFilter: AlertStatus | 'all';
   levelFilter: 1 | 2 | 'all';
@@ -17,10 +27,19 @@ interface AlertState {
   addAlert: (alert: Alert) => void;
   getFilteredAlerts: () => Alert[];
   getAlertCount: () => { level1: number; level2: number; pending: number };
+  fetchAlerts: () => Promise<void>;
+  fetchAlertCount: () => Promise<void>;
+  fetchAll: () => Promise<void>;
 }
 
 export const useAlertStore = create<AlertState>((set, get) => ({
-  alerts: generateAlerts(),
+  alerts: [],
+  alertCount: null,
+  loading: {
+    alerts: false,
+    count: false,
+    action: false
+  },
   selectedAlertId: null,
   statusFilter: 'all',
   levelFilter: 'all',
@@ -37,6 +56,22 @@ export const useAlertStore = create<AlertState>((set, get) => ({
     const stepIdx = alert.currentStepIndex;
     const step = alert.approvalSteps[stepIdx];
     if (!step || step.approved) return false;
+
+    set(state => ({ loading: { ...state.loading, action: true } }));
+
+    void apiApproveAlert(alertId, {
+      role: role as 'hq' | 'region' | 'enterprise',
+      comment,
+      approverName
+    }).then(updatedAlert => {
+      set(state => ({
+        alerts: state.alerts.map(a => a.id === alertId ? updatedAlert : a),
+        loading: { ...state.loading, action: false }
+      }));
+      void get().fetchAlertCount();
+    }).catch(() => {
+      set(state => ({ loading: { ...state.loading, action: false } }));
+    });
 
     const newSteps = [...alert.approvalSteps];
     newSteps[stepIdx] = {
@@ -67,6 +102,18 @@ export const useAlertStore = create<AlertState>((set, get) => ({
   },
 
   escalateAlert: (alertId) => {
+    set(state => ({ loading: { ...state.loading, action: true } }));
+
+    void apiEscalateAlert(alertId).then(updatedAlert => {
+      set(state => ({
+        alerts: state.alerts.map(a => a.id === alertId ? updatedAlert : a),
+        loading: { ...state.loading, action: false }
+      }));
+      void get().fetchAlertCount();
+    }).catch(() => {
+      set(state => ({ loading: { ...state.loading, action: false } }));
+    });
+
     set(state => ({
       alerts: state.alerts.map(a =>
         a.id === alertId && a.level === 1
@@ -77,6 +124,18 @@ export const useAlertStore = create<AlertState>((set, get) => ({
   },
 
   resolveAlert: (alertId) => {
+    set(state => ({ loading: { ...state.loading, action: true } }));
+
+    void apiResolveAlert(alertId).then(updatedAlert => {
+      set(state => ({
+        alerts: state.alerts.map(a => a.id === alertId ? updatedAlert : a),
+        loading: { ...state.loading, action: false }
+      }));
+      void get().fetchAlertCount();
+    }).catch(() => {
+      set(state => ({ loading: { ...state.loading, action: false } }));
+    });
+
     set(state => ({
       alerts: state.alerts.map(a =>
         a.id === alertId
@@ -98,11 +157,43 @@ export const useAlertStore = create<AlertState>((set, get) => ({
   },
 
   getAlertCount: () => {
-    const { alerts } = get();
+    const { alertCount, alerts } = get();
+    if (alertCount) return alertCount;
     return {
       level1: alerts.filter(a => a.level === 1 && a.status !== 'resolved').length,
       level2: alerts.filter(a => a.level === 2 && a.status !== 'resolved').length,
       pending: alerts.filter(a => a.status === 'pending' || a.status === 'processing').length
     };
+  },
+
+  fetchAlerts: async () => {
+    set(state => ({ loading: { ...state.loading, alerts: true } }));
+    try {
+      const params: AlertParams = {};
+      const { statusFilter, levelFilter } = get();
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (levelFilter !== 'all') params.level = levelFilter;
+      const data = await getAlerts(params);
+      set({ alerts: data });
+    } finally {
+      set(state => ({ loading: { ...state.loading, alerts: false } }));
+    }
+  },
+
+  fetchAlertCount: async () => {
+    set(state => ({ loading: { ...state.loading, count: true } }));
+    try {
+      const data = await getAlertCount();
+      set({ alertCount: data });
+    } finally {
+      set(state => ({ loading: { ...state.loading, count: false } }));
+    }
+  },
+
+  fetchAll: async () => {
+    await Promise.all([
+      get().fetchAlerts(),
+      get().fetchAlertCount()
+    ]);
   }
 }));
